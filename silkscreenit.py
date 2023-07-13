@@ -4,24 +4,78 @@ import halftone as ht
 import numpy as np
 from PIL import Image, ImageOps
 
+CANVAS_SIZE = (1000, 1000)
 
-def generate_background_gradient():
-    imgsize = (1000, 1000)
 
-    image = Image.new("RGB", imgsize)
+def doit(
+    size=CANVAS_SIZE,
+    subject_size_factor=0.5,
+    background_glow_factor=0.5,
+    export_intermediates=True,
+):
+    img = Image.new("RGBA", size=size)
 
-    innerColor = [80, 80, 255]
+    background = generate_background_gradient(
+        size=size, size_factor=background_glow_factor
+    )
+    if export_intermediates:
+        background.save("background.png")
+
+    img.paste(background)
+
+    source = Image.open("source.png").convert("RGBA")
+
+    # WARNING: currently the source is assumed to be square
+    subject_size = (
+        int(size[0] * subject_size_factor),
+        int(size[1] * subject_size_factor),
+    )
+    scaled_source = source.resize(subject_size)
+
+    img.paste(
+        scaled_source,
+        box=(
+            int((size[0] - subject_size[0]) / 2),
+            int((size[1] - subject_size[1]) / 2),
+        ),
+        mask=scaled_source,
+    )
+
+    if export_intermediates:
+        img.save("combined.png")
+
+    img = halftoneit(img)
+
+    img.save("output.png")
+    img_inverted = ImageOps.invert(img)
+    img_inverted.save("output.inverted.png")
+
+
+def halftoneit(img):
+    img = img.convert("L")
+    return ht.halftone(img=img, spot_fn=ht.euclid_dot(spacing=9, angle=30))
+
+
+def generate_background_gradient(size=CANVAS_SIZE, size_factor=1):
+
+    image = Image.new("RGB", size)
+
+    innerColor = [255, 255, 255]
     outerColor = [0, 0, 0]
 
-    for y in range(imgsize[1]):
-        for x in range(imgsize[0]):
+    for y in range(size[1]):
+        for x in range(size[0]):
             # Find the distance to the center
             distanceToCenter = math.sqrt(
-                (x - imgsize[0] / 2) ** 2 + (y - imgsize[1] / 2) ** 2
+                (x - size[0] / 2) ** 2 + (y - size[1] / 2) ** 2
             )
 
             # Make it on a scale from 0 to 1
-            distanceToCenter = float(distanceToCenter) / (math.sqrt(2) * imgsize[0] / 2)
+            distanceToCenter = (
+                float(distanceToCenter)
+                / (math.sqrt(2) * size[0] / 2)
+                * (1 / size_factor)
+            )
 
             # Calculate r, g, and b values
             r = outerColor[0] * distanceToCenter + innerColor[0] * (
@@ -36,19 +90,7 @@ def generate_background_gradient():
 
             # Place the pixel
             image.putpixel((x, y), (int(r), int(g), int(b)))
-    return image
+    return image.convert("RGBA")
 
 
-background = generate_background_gradient()
-background.save("background.png")
-
-img = Image.open("source.png")
-img = img.convert("L")
-# img = PIL.Image.open("lena.png")
-
-halftoned = ht.halftone(img=img, spot_fn=ht.euclid_dot(spacing=9, angle=30))
-
-halftoned.save("output.png")
-
-inverted = ImageOps.invert(halftoned)
-inverted.save("output.inverted.png")
+doit()
