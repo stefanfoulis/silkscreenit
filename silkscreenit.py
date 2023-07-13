@@ -13,9 +13,9 @@ TURTLE_SHELL_COLOR_2 = (32, 94, 105)
 
 def doit(
     size=CANVAS_SIZE,
-    subject_size_factor=0.7,
+    subject_size_factor=0.9,
     subject_offset=(20, 0),
-    background_glow_factor=0.5,
+    background_glow_factor=0.7,
     export_intermediates=True,
 ):
     img = Image.new("RGBA", size=size)
@@ -82,14 +82,22 @@ def replace_color(img, color1, color2):
 
 def halftoneit(img):
     img = img.convert("L")
-    return ht.halftone(img=img, spot_fn=ht.euclid_dot(spacing=9, angle=30))
+    return ht.halftone(
+        img=img,
+        # spot_fn=ht.euclid_dot(spacing=9, angle=30),
+        spot_fn=ht.euclid_dot(spacing=5, angle=30),
+        # spot_fn=ht.euclid_dot(spacing=8, angle=42),
+        # spot_fn=ht.circle_dot(spacing=8, angle=42),
+        # spot_fn=ht.line(spacing=8, angle=42),
+        # spot_fn=ht.triangle_dot(spacing=8, angle=42),
+    )
 
 
 def generate_background_gradient(size=CANVAS_SIZE, size_factor=1):
 
     image = Image.new("RGB", size)
 
-    innerColor = [255, 255, 255]
+    innerColor = [128, 128, 128]
     outerColor = [0, 0, 0]
 
     for y in range(size[1]):
