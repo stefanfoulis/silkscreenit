@@ -6,10 +6,15 @@ from PIL import Image, ImageOps
 
 CANVAS_SIZE = (1000, 1000)
 
+TURTLE_SKIN_COLOR = (105, 186, 201)
+TURTLE_SHELL_COLOR_1 = (16, 155, 53)
+TURTLE_SHELL_COLOR_2 = (32, 94, 105)
+
 
 def doit(
     size=CANVAS_SIZE,
-    subject_size_factor=0.5,
+    subject_size_factor=0.7,
+    subject_offset=(20, 0),
     background_glow_factor=0.5,
     export_intermediates=True,
 ):
@@ -24,6 +29,9 @@ def doit(
     img.paste(background)
 
     source = Image.open("source.png").convert("RGBA")
+    source = replace_color(source, TURTLE_SKIN_COLOR, (255, 255, 255))
+    source = replace_color(source, TURTLE_SHELL_COLOR_1, (200, 200, 200))
+    source = replace_color(source, TURTLE_SHELL_COLOR_2, (120, 120, 120))
 
     # WARNING: currently the source is assumed to be square
     subject_size = (
@@ -35,8 +43,14 @@ def doit(
     img.paste(
         scaled_source,
         box=(
-            int((size[0] - subject_size[0]) / 2),
-            int((size[1] - subject_size[1]) / 2),
+            int(
+                ((size[0] - subject_size[0]) / 2)
+                + (size[0] / subject_offset[0] if subject_offset[0] else 0)
+            ),
+            int(
+                ((size[1] - subject_size[1]) / 2)
+                + (size[1] / subject_offset[1] if subject_offset[1] else 0)
+            ),
         ),
         mask=scaled_source,
     )
@@ -49,6 +63,21 @@ def doit(
     img.save("output.png")
     img_inverted = ImageOps.invert(img)
     img_inverted.save("output.inverted.png")
+
+
+def replace_color(img, color1, color2):
+    # "data" is a height x width x 4 numpy array
+    data = np.array(img)
+
+    # Temporarily unpack the bands for readability
+    red, green, blue, alpha = data.T
+
+    # Replace color1 with color2... (leaves alpha values alone...)
+    white_areas = (red == color1[0]) & (blue == color1[2]) & (green == color1[1])
+    data[..., :-1][white_areas.T] = color2  # Transpose back needed
+
+    im2 = Image.fromarray(data)
+    return im2
 
 
 def halftoneit(img):
